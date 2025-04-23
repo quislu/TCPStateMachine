@@ -51,6 +51,8 @@ class StudentSocketImpl extends BaseSocketImpl {
    */
   public synchronized void receivePacket(TCPPacket p){
     System.out.println(p.toString());
+
+    //TODO - create switch statements based on state
   }
   
   /** 
@@ -62,6 +64,7 @@ class StudentSocketImpl extends BaseSocketImpl {
    */
   public synchronized void acceptConnection() throws IOException {
     D.registerListeningSocket(localport, this);
+    current_state = LISTEN; 
   }
 
   
