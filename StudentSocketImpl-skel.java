@@ -9,6 +9,18 @@ class StudentSocketImpl extends BaseSocketImpl {
   //   protected int port;
   //   protected int localport;
 
+  private static final int CLOSED = 0;
+  private static final int SYN_SENT = 1;
+  private static final int LISTEN = 2;
+  private static final int SYN_RCVD = 3;
+  private static final int ESTABLISHED = 4;
+  private static final int CLOSE_WAIT = 5;
+  private static final int LAST_ACK = 6;
+  private static final int FIN_WAIT_1 = 7;
+  private static final int FIN_WAIT_2 = 8;
+  private static final int CLOSING = 9;
+  private static final int TIME_WAIT = 10;
+
   private Demultiplexer D;
   private Timer tcpTimer;
 
