@@ -50,6 +50,7 @@ class StudentSocketImpl extends BaseSocketImpl {
    * @param p The packet that arrived
    */
   public synchronized void receivePacket(TCPPacket p){
+    System.out.println(p.toString());
   }
   
   /** 
