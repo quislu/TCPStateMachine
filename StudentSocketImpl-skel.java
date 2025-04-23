@@ -23,10 +23,12 @@ class StudentSocketImpl extends BaseSocketImpl {
 
   private Demultiplexer D;
   private Timer tcpTimer;
+  private int current_state;
 
 
   StudentSocketImpl(Demultiplexer D) {  // default constructor
     this.D = D;
+    this.current_state = 0;
   }
 
   /**
@@ -39,6 +41,8 @@ class StudentSocketImpl extends BaseSocketImpl {
    */
   public synchronized void connect(InetAddress address, int port) throws IOException{
     localport = D.getNextAvailablePort();
+    D.registerConnection(address, port, localport, this);
+    current_state = SYN_SENT;
   }
   
   /**
@@ -56,6 +60,7 @@ class StudentSocketImpl extends BaseSocketImpl {
    * Note that localport is already set prior to this being called.
    */
   public synchronized void acceptConnection() throws IOException {
+
   }
 
   
