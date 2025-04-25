@@ -1,5 +1,5 @@
-import java.net.*;
 import java.io.*;
+import java.net.*;
 import java.util.Timer;
 
 class StudentSocketImpl extends BaseSocketImpl {
@@ -25,10 +25,10 @@ class StudentSocketImpl extends BaseSocketImpl {
   private Timer tcpTimer;
   private int current_state;
 
-
   StudentSocketImpl(Demultiplexer D) {  // default constructor
     this.D = D;
-    this.current_state = 0;
+    this.current_state = CLOSED;    
+    System.out.println("DEBUG: Student Socket initialized.");
   }
 
   /**
@@ -41,8 +41,22 @@ class StudentSocketImpl extends BaseSocketImpl {
    */
   public synchronized void connect(InetAddress address, int port) throws IOException{
     localport = D.getNextAvailablePort();
+    this.address = address;
+    this.port = port;
+    int seqNum = 10;
+    System.out.println("DEBUG: Variables initialized.");
+
     D.registerConnection(address, port, localport, this);
+    System.out.println("DEBUG: Connection registered.");
+
+    TCPPacket synPacket = new TCPPacket(localport, port, seqNum, 0, false, true, false, 1000, new byte[0]);
+    System.out.println("DEBUG: TCPPacket created.");
+
+    TCPWrapper.send(synPacket, address);
     current_state = SYN_SENT;
+    System.out.println("DEBUG: packet sent.");
+
+    System.out.println("SYN Packet sent to " + address + ":" + port);
   }
   
   /**
@@ -50,7 +64,7 @@ class StudentSocketImpl extends BaseSocketImpl {
    * @param p The packet that arrived
    */
   public synchronized void receivePacket(TCPPacket p){
-    System.out.println(p.toString());
+    System.out.println("Packet received: " + p);
 
     //TODO - create switch statements based on state
   }
