@@ -65,8 +65,29 @@ class StudentSocketImpl extends BaseSocketImpl {
    */
   public synchronized void receivePacket(TCPPacket p){
     System.out.println("Packet received: " + p);
+    switch(current_state) {
+      case LISTEN:
+        byte bufferedPacket[] = p.getBufferPacket();
+        int seqNum1 = 0;
+        for (int i = 4; i < 8; i++) {
+          seqNum1 += (bufferedPacket[i]<<((7-i)*8));
+        }
+        int seqNum2 = bufferedPacket[4];
+        System.out.println("DEBUG: " + seqNum1 + ", " + seqNum2);
 
-    //TODO - create switch statements based on state
+//        int ackNum = 0;
+//        for (int i = 8; i < 12; i++) {
+//          ackNum += (bufferedPacket[i]<<((7-i)*8));
+//        }
+
+//        packet[4] = (byte) (seqNum>>24);
+//        packet[5] = (byte) (seqNum>>16);
+//        packet[6] = (byte) (seqNum>>8);
+//        packet[7] = (byte)  seqNum;
+
+//        TCPPacket synackPacket = new TCPPacket(localport, port, 1, 0, false, true, false, 1000, new byte[0]);
+        break;
+    }
   }
   
   /** 
@@ -78,7 +99,8 @@ class StudentSocketImpl extends BaseSocketImpl {
    */
   public synchronized void acceptConnection() throws IOException {
     D.registerListeningSocket(localport, this);
-    current_state = LISTEN; 
+    current_state = LISTEN;
+    System.out.println("DEBUG: current_state changed to " + LISTEN + " with localport " + localport);
   }
 
   
