@@ -98,8 +98,8 @@ class StudentSocketImpl extends BaseSocketImpl {
    * Note that localport is already set prior to this being called.
    */
   public synchronized void acceptConnection() throws IOException {
-    D.registerListeningSocket(localport, this);
-    current_state = LISTEN;
+    this.D.registerListeningSocket(localport, this);
+    this.current_state = LISTEN;
     System.out.println("DEBUG: current_state changed to " + LISTEN + " with localport " + localport);
   }
 
