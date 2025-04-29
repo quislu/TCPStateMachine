@@ -24,6 +24,8 @@ class StudentSocketImpl extends BaseSocketImpl {
   private Demultiplexer D;
   private Timer tcpTimer;
   private int current_state;
+  private int seq;
+  private int ack;
 
   StudentSocketImpl(Demultiplexer D) {  // default constructor
     this.D = D;
@@ -67,25 +69,21 @@ class StudentSocketImpl extends BaseSocketImpl {
     System.out.println("Packet received: " + p);
     switch(current_state) {
       case LISTEN:
-        byte bufferedPacket[] = p.getBufferPacket();
-        int seqNum1 = 0;
-        for (int i = 4; i < 8; i++) {
-          seqNum1 += (bufferedPacket[i]<<((7-i)*8));
-        }
-        int seqNum2 = bufferedPacket[4];
-        System.out.println("DEBUG: " + seqNum1 + ", " + seqNum2);
+        this.address = p.sourceAddr;
 
-//        int ackNum = 0;
-//        for (int i = 8; i < 12; i++) {
-//          ackNum += (bufferedPacket[i]<<((7-i)*8));
-//        }
+        int destPort = p.sourcePort;
 
-//        packet[4] = (byte) (seqNum>>24);
-//        packet[5] = (byte) (seqNum>>16);
-//        packet[6] = (byte) (seqNum>>8);
-//        packet[7] = (byte)  seqNum;
+        int seqNum = p.seqNum;
 
-//        TCPPacket synackPacket = new TCPPacket(localport, port, 1, 0, false, true, false, 1000, new byte[0]);
+        int ackNum = p.ackNum;
+
+        TCPPacket synAckPacket = new TCPPacket(localport, destPort, ackNum+1, seqNum+1, true, true, false, 1000, new byte[0]);
+        System.out.println("DEBUG: TCPPacket created.");
+
+        TCPWrapper.send(synAckPacket, this.address);
+        System.out.println("DEBUG: packet sent.");
+
+        System.out.println("SYNACK Packet sent to " + this.address + ":" + destPort);
         break;
     }
   }
