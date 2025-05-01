@@ -73,11 +73,11 @@ class StudentSocketImpl extends BaseSocketImpl {
 
         int destPort = p.sourcePort;
 
-        int seqNum = p.seqNum;
+        int seqNum = (p.seqNum + 1) % TCPPacket.MAX_PACKET_SIZE;
 
-        int ackNum = p.ackNum;
+        int ackNum = p.seqNum;
 
-        TCPPacket synAckPacket = new TCPPacket(localport, destPort, ackNum+1, seqNum+1, true, true, false, 1000, new byte[0]);
+        TCPPacket synAckPacket = new TCPPacket(localport, destPort, ackNum, seqNum, true, true, false, 1000, new byte[0]);
         System.out.println("DEBUG: TCPPacket created.");
 
         TCPWrapper.send(synAckPacket, this.address);
