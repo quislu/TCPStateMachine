@@ -9,21 +9,21 @@ class StudentSocketImpl extends BaseSocketImpl {
   //   protected int port;
   //   protected int localport;
 
-  private static final int CLOSED = 0;
-  private static final int SYN_SENT = 1;
-  private static final int LISTEN = 2;
-  private static final int SYN_RCVD = 3;
-  private static final int ESTABLISHED = 4;
-  private static final int CLOSE_WAIT = 5;
-  private static final int LAST_ACK = 6;
-  private static final int FIN_WAIT_1 = 7;
-  private static final int FIN_WAIT_2 = 8;
-  private static final int CLOSING = 9;
-  private static final int TIME_WAIT = 10;
+  private static final String CLOSED = "CLOSED";
+  private static final String SYN_SENT = "SYN_SENT";
+  private static final String LISTEN = "LISTEN";
+  private static final String SYN_RCVD = "SYN_RCVD";
+  private static final String ESTABLISHED = "ESTABLISHED";
+  private static final String CLOSE_WAIT = "CLOSE_WAIT";
+  private static final String LAST_ACK = "LAST_ACK";
+  private static final String FIN_WAIT_1 = "FIN_WAIT_1";
+  private static final String FIN_WAIT_2 = "FIN_WAIT_2";
+  private static final String CLOSING = "CLOSING";
+  private static final String TIME_WAIT = "TIME_WAIT";
 
   private Demultiplexer D;
   private Timer tcpTimer;
-  private int current_state;
+  private String current_state;
   private int seqNum;
   private int ackNum;
 
@@ -55,7 +55,7 @@ class StudentSocketImpl extends BaseSocketImpl {
     System.out.println("DEBUG: TCPPacket created.");
 
     TCPWrapper.send(synPacket, address);
-    current_state = SYN_SENT;
+    changeState(SYN_SENT);
     System.out.println("DEBUG: packet sent.");
 
     System.out.println("SYN Packet sent to " + address + ":" + port);
@@ -106,7 +106,7 @@ class StudentSocketImpl extends BaseSocketImpl {
 
         System.out.println("SYNACK Packet sent to " + this.address + ":" + port);
 
-        current_state = SYN_RCVD;
+        changeState(SYN_RCVD);
         break;
 
 
@@ -125,9 +125,19 @@ class StudentSocketImpl extends BaseSocketImpl {
 
         System.out.println("ACK Packet sent to " + this.address + ":" + port);
 
-        current_state = ESTABLISHED;
+        changeState(ESTABLISHED);
+        break;
+
+      case SYN_RCVD:
+        changeState(ESTABLISHED);
         break;
     }
+  }
+
+  private void changeState( String newState) {
+    String previousState = this.current_state;
+    this.current_state = newState;
+    System.out.println("!!! " + previousState + "->" + newState);
   }
   
   /** 
@@ -139,7 +149,7 @@ class StudentSocketImpl extends BaseSocketImpl {
    */
   public synchronized void acceptConnection() throws IOException {
     this.D.registerListeningSocket(localport, this);
-    this.current_state = LISTEN;
+    changeState(LISTEN);
     System.out.println("DEBUG: current_state changed to " + LISTEN + " with localport " + localport);
   }
 
