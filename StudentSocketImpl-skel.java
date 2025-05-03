@@ -45,7 +45,7 @@ class StudentSocketImpl extends BaseSocketImpl {
     localport = D.getNextAvailablePort();
     this.address = address;
     this.port = port;
-    int seqNum = 10;
+    int seqNum = 10; // change to randomize from 0-1000
     System.out.println("DEBUG: Variables initialized.");
 
     D.registerConnection(address, port, localport, this);
@@ -59,6 +59,9 @@ class StudentSocketImpl extends BaseSocketImpl {
     System.out.println("DEBUG: packet sent.");
 
     System.out.println("SYN Packet sent to " + address + ":" + port);
+
+    // Wait? until something
+
   }
   
   /**
@@ -76,7 +79,7 @@ class StudentSocketImpl extends BaseSocketImpl {
 
         int seqNum = (p.seqNum + 1) % TCPPacket.MAX_PACKET_SIZE;
 
-        int ackNum = p.seqNum;
+        int ackNum = p.seqNum + p.data.length;
 
         TCPPacket synAckPacket = new TCPPacket(localport, destPort, ackNum, seqNum, true, true, false, 1000, new byte[0]);
         System.out.println("DEBUG: TCPPacket created.");
