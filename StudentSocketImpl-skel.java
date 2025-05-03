@@ -48,8 +48,8 @@ class StudentSocketImpl extends BaseSocketImpl {
     int seqNum = 10; // change to randomize from 0-1000
     System.out.println("DEBUG: Variables initialized.");
 
-    D.registerConnection(address, port, localport, this);
-    System.out.println("DEBUG: Connection registered.");
+    D.registerConnection(address, localport, port, this);
+    System.out.println("DEBUG: Connection registered with " + address + " at " + port + " to local port " + localport);
 
     TCPPacket synPacket = new TCPPacket(localport, port, seqNum, 0, false, true, false, 1000, new byte[0]);
     System.out.println("DEBUG: TCPPacket created.");
