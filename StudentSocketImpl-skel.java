@@ -61,7 +61,22 @@ class StudentSocketImpl extends BaseSocketImpl {
     System.out.println("SYN Packet sent to " + address + ":" + port);
 
     // Wait? until something
+    long timeStart = System.currentTimeMillis();
+    long timeout = 10000;
 
+    while (current_state != ESTABLISHED) {
+      long elapsed = System.currentTimeMillis() - timeStart;
+      long timeLeft = timeout - elapsed;
+      if (timeLeft <= 0) {
+        throw new IOException("TCP Timeout from connectiong waiting to be established.");
+      }
+      try {
+        wait();
+      } catch (InterruptedException e) {
+        throw new IOException("ERROR: Connection Interrupted", e);
+      }
+    }
+    System.out.println("DEBUG: Connection established");
   }
   
   /**
