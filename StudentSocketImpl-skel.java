@@ -151,6 +151,23 @@ class StudentSocketImpl extends BaseSocketImpl {
     this.D.registerListeningSocket(localport, this);
     changeState(LISTEN);
     System.out.println("DEBUG: current_state changed to " + LISTEN + " with localport " + localport);
+
+    long timeStart = System.currentTimeMillis();
+    long timeout = 10000;
+
+    while (current_state != ESTABLISHED && current_state != SYN_RCVD) {
+      long elapsed = System.currentTimeMillis() - timeStart;
+      long timeLeft = timeout - elapsed;
+      if (timeLeft <= 0) {
+        throw new IOException("TCP Timeout from connectiong waiting to be established.");
+      }
+      try {
+        wait();
+      } catch (InterruptedException e) {
+        throw new IOException("ERROR: Connection Interrupted", e);
+      }
+    }
+    System.out.println("DEBUG: Connection established");
   }
 
   
