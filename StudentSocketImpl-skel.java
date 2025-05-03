@@ -24,8 +24,8 @@ class StudentSocketImpl extends BaseSocketImpl {
   private Demultiplexer D;
   private Timer tcpTimer;
   private int current_state;
-  private int seq;
-  private int ack;
+  private int seqNum;
+  private int ackNum;
 
   StudentSocketImpl(Demultiplexer D) {  // default constructor
     this.D = D;
@@ -90,13 +90,14 @@ class StudentSocketImpl extends BaseSocketImpl {
       case LISTEN:
         this.address = p.sourceAddr;
 
-        int destPort = p.sourcePort;
+        this.port = p.sourcePort;
 
-        int seqNum = (p.seqNum + 1) % TCPPacket.MAX_PACKET_SIZE;
+        this.seqNum = p.ackNum;
 
-        int ackNum = p.seqNum + p.data.length;
+        packetLength = p.data != null? p.data.length : 1;
+        this.ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
 
-        TCPPacket synAckPacket = new TCPPacket(localport, destPort, ackNum, seqNum, true, true, false, 1000, new byte[0]);
+        TCPPacket synAckPacket = new TCPPacket(localport, port, seqNum, ackNum, true, true, false, 1000, new byte[0]);
         System.out.println("DEBUG: TCPPacket created.");
 
         TCPWrapper.send(synAckPacket, this.address);
@@ -105,6 +106,25 @@ class StudentSocketImpl extends BaseSocketImpl {
         System.out.println("SYNACK Packet sent to " + this.address + ":" + destPort);
 
         current_state = SYN_RCVD;
+        break;
+
+
+      case SYN_SENT:
+
+        this.seqNum = p.ackNum;
+
+        packetLength = p.data != null? p.data.length : 1;
+        this.ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
+
+        TCPPacket ackPacket = new TCPPacket(localport, port, seqNum, ackNum, true, true, false, 1000, new byte[0]);
+        System.out.println("DEBUG: TCPPacket created.");
+
+        TCPWrapper.send(ackPacket, this.address);
+        System.out.println("DEBUG: packet sent.");
+
+        System.out.println("ACK Packet sent to " + this.address + ":" + port);
+
+        current_state = ESTABLISHED;
         break;
     }
   }
