@@ -86,6 +86,7 @@ class StudentSocketImpl extends BaseSocketImpl {
   public synchronized void receivePacket(TCPPacket p){
     System.out.println("Packet received: " + p);
     this.notifyAll();
+    int packetLength;
     switch(current_state) {
       case LISTEN:
         this.address = p.sourceAddr;
@@ -103,7 +104,7 @@ class StudentSocketImpl extends BaseSocketImpl {
         TCPWrapper.send(synAckPacket, this.address);
         System.out.println("DEBUG: packet sent.");
 
-        System.out.println("SYNACK Packet sent to " + this.address + ":" + destPort);
+        System.out.println("SYNACK Packet sent to " + this.address + ":" + port);
 
         current_state = SYN_RCVD;
         break;
