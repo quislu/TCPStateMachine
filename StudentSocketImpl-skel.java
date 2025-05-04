@@ -142,13 +142,13 @@ class StudentSocketImpl extends BaseSocketImpl {
         this.address = p.sourceAddr;
         this.port = p.sourcePort;
         this.seqNum = p.ackNum;
+
         packetLength = p.data != null? p.data.length : 20;
         this.ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
 
         // Set up connection and close the listening socket
         try {
           this.D.unregisterListeningSocket(localport, this);
-          this.D.registerConnection(address, localport, port, this);
         } catch (IOException e) {
           e.printStackTrace();
         }
@@ -156,9 +156,18 @@ class StudentSocketImpl extends BaseSocketImpl {
         // Create and send SYN+ACK
         TCPPacket synAckPacket = new TCPPacket(localport, port, seqNum, ackNum, true, true, false, 1000, new byte[0]);
         System.out.println("DEBUG: TCPPacket created.");
+
+        // Send SYN-ACK Packet before registering, just in case 
         sendPacketOnTimer(synAckPacket);
         //TCPWrapper.send(synAckPacket, this.address);
         System.out.println("SYNACK Packet sent to " + this.address + ":" + port);
+
+        // Register connection after sending SYN-ACK
+        try {
+          this.D.registerConnection(address, localport, port, this);
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
 
         changeState(SYN_RCVD);
         break;
