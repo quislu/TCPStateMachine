@@ -212,6 +212,10 @@ class StudentSocketImpl extends BaseSocketImpl {
         }
 
         System.err.println("DEBUG: Packet received during state SYN_RCVD but it was not a ACK packet.");
+=======
+        this.address = p.sourceAddr;
+        changeState(ESTABLISHED);
+>>>>>>> Stashed changes
         break;
 
       // Server has established connection and is awaiting data
@@ -280,9 +284,12 @@ class StudentSocketImpl extends BaseSocketImpl {
       case FIN_WAIT_1:
         // Check if the packet is a FIN
         if(p.finFlag) {
-          // This means the remote host has also called close() and now awaits an ACK
-          // TODO - SEND ACK
           changeState(CLOSING);
+          // This means the remote host has also called close() and now awaits an ACK
+          packetLength = p.data != null? p.data.length : 20;
+          ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
+          TCPPacket ack = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, new byte[0]);
+          TCPWrapper.send(ack, address);
           break;
         }
 
@@ -306,6 +313,7 @@ class StudentSocketImpl extends BaseSocketImpl {
           TCPPacket ack = new TCPPacket(localport, port, seqNum,ackNum, true, false, false, 1000, new byte[0]);
           TCPWrapper.send(ack, this.address);
           changeState(TIME_WAIT);
+          break;
         }
 
         // Otherwise ignore the packet
@@ -420,20 +428,19 @@ class StudentSocketImpl extends BaseSocketImpl {
    * @exception  IOException  if an I/O error occurs when closing this socket.
    */
   public synchronized void close() {
-    try {
-      // TODO: close resources that need closing
-      appIS.close();
-      appOS.close();
-      TCPPacket finPacket = new TCPPacket(localport, port, seqNum, ackNum, true, false, true, 1000, new byte[0]);
-      TCPWrapper.send(finPacket, address);
-      if (this.current_state.equals(ESTABLISHED)){
-        changeState(FIN_WAIT_1);
-      } else if (this.current_state.equals(CLOSE_WAIT)) {
-        changeState(LAST_ACK);
-      }
-    } catch (IOException e) {
-      System.err.println("Error: Issue with closing streams: " + e.getMessage());
-      e.printStackTrace();
+    // TODO: close resources that need closing
+    if (this.current_state.equals(ESTABLISHED) || this.current_state.equals(CLOSE_WAIT)){
+      TCPPacket finPacket = new TCPPacket(localport, port, seqNum, ackNum, false, false, true, 1000, new byte[0]);
+
+      InetAddress newAddr = this.address;
+      TCPWrapper.send(finPacket, newAddr);
+
+
+    }
+    if (this.current_state.equals(ESTABLISHED)){
+      changeState(FIN_WAIT_1);
+    } else if (this.current_state.equals(CLOSE_WAIT)) {
+      changeState(LAST_ACK);
     }
   }
 
