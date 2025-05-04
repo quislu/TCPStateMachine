@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.*;
 import java.util.Arrays;
+import java.util.Random;
 import java.util.Timer;
 
 class StudentSocketImpl extends BaseSocketImpl {
@@ -57,7 +58,9 @@ class StudentSocketImpl extends BaseSocketImpl {
       localport = D.getNextAvailablePort();
       this.address = address;
       this.port = port;
-      seqNum = 10; // change to randomize from 0-1000
+
+      Random r = new Random();
+      this.seqNum = r.nextInt(1000); // change to randomize from 0-1000
       // System.out.println("DEBUG: Variables initialized.");
 
       D.registerConnection(address, localport, port, this);
@@ -218,10 +221,10 @@ class StudentSocketImpl extends BaseSocketImpl {
           System.out.println("DEBUG: packet sent.");
 
           System.out.println("SYNACK Packet sent to " + this.address + ":" + port);
+          break;
         } 
-        System.err.println("DEBUG: Packet received during state SYN_RCVD but it was not a ACK packet.");
-        this.address = p.sourceAddr;
-        changeState(ESTABLISHED);
+        // For handling unrecognized packets
+        System.err.println("DEBUG: Packet received during state SYN_RCVD but it was not a ACK packet. Packet info: " + p);
         break;
 
       // Server has established connection and is awaiting data
