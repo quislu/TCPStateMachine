@@ -125,7 +125,7 @@ class StudentSocketImpl extends BaseSocketImpl {
       // Upon receiving a SYN, send SYN+ACK and switch to SYN_RCVD state
       case LISTEN:
 
-        // Check if packet is a SYN
+        // Check if packet is a SYN; should ignore if not SYN
         if (! p.synFlag) {
           System.err.println("DEBUG: Packet received during state LISTEN but it was not a SYN packet.");
           break;
@@ -133,12 +133,9 @@ class StudentSocketImpl extends BaseSocketImpl {
 
         // Get packet information and flags
         this.address = p.sourceAddr;
-
         this.port = p.sourcePort;
-
         this.seqNum = p.ackNum;
-
-        packetLength = p.data != null? p.data.length : 1;
+        packetLength = p.data != null? p.data.length : 20;
         this.ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
 
         // Set up connection and close the listening socket
@@ -171,8 +168,7 @@ class StudentSocketImpl extends BaseSocketImpl {
           break;
         }
         this.seqNum = p.ackNum;
-
-        packetLength = p.data != null? p.data.length : 1;
+        packetLength = p.data != null? p.data.length : 20;
         this.ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
 
         TCPPacket ackPacket = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, new byte[0]);
@@ -222,7 +218,7 @@ class StudentSocketImpl extends BaseSocketImpl {
           }
         
           // Create and send ACK
-          packetLength = p.data.length;
+          packetLength = p.data != null? p.data.length : 20;
           ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
           TCPPacket ack = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, new byte[0]);
           TCPWrapper.send(ack, address);
@@ -258,7 +254,7 @@ class StudentSocketImpl extends BaseSocketImpl {
       case FIN_WAIT_2:
         // Check if the packet is a FIN
         if (p.finFlag) {
-          ackNum = (p.seqNum + 1) % TCPPacket.MAX_PACKET_SIZE;
+          ackNum = (p.seqNum + 20) % TCPPacket.MAX_PACKET_SIZE;
           TCPPacket ack = new TCPPacket(localport, port, seqNum,ackNum, true, false, false, 1000, new byte[0]);
           TCPWrapper.send(ack, address);
           changeState(TIME_WAIT);
