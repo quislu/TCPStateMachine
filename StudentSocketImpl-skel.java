@@ -202,13 +202,13 @@ class StudentSocketImpl extends BaseSocketImpl {
       case SYN_RCVD:
 
         // Check if packet is an ACK
-        if (p.ackFlag) {
+        if (p.ackFlag && !p.synFlag && !p.finFlag) {
           // Stop waiting for ACK
           tcpTimer.cancel();
           changeState(ESTABLISHED);
           break;
         }
-        else if (p.synFlag) {
+        else if (p.synFlag && !p.ackFlag) {
           // ACK was likely lost, resend SYN+ACK
           // Create and send SYN+ACK
           TCPPacket synAckPacket2 = new TCPPacket(localport, port, seqNum, ackNum, true, true, false, 1000, new byte[0]);
@@ -218,8 +218,7 @@ class StudentSocketImpl extends BaseSocketImpl {
           System.out.println("DEBUG: packet sent.");
 
           System.out.println("SYNACK Packet sent to " + this.address + ":" + port);
-        }
-
+        } 
         System.err.println("DEBUG: Packet received during state SYN_RCVD but it was not a ACK packet.");
         this.address = p.sourceAddr;
         changeState(ESTABLISHED);
