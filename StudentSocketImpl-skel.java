@@ -156,13 +156,6 @@ class StudentSocketImpl extends BaseSocketImpl {
           e.printStackTrace();
         }
 
-        // Register connection after sending SYN-ACK
-        try {
-          this.D.registerConnection(address, localport, port, this);
-        } catch (IOException e) {
-          e.printStackTrace();
-        }
-        
         // Create and send SYN+ACK
         TCPPacket synAckPacket = new TCPPacket(localport, port, seqNum, ackNum, true, true, false, 1000, new byte[0]);
         System.out.println("DEBUG: TCPPacket created.");
@@ -209,6 +202,14 @@ class StudentSocketImpl extends BaseSocketImpl {
           // Stop waiting for ACK
           tcpTimer.cancel();
           changeState(ESTABLISHED);
+
+          // Go ahead and register connection with Demultiplexer
+          try {
+              this.D.registerConnection(p.sourceAddr, localport, p.sourcePort, this);
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
+
           break;
         }
         else if (p.synFlag && !p.ackFlag) {
