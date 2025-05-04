@@ -74,7 +74,7 @@ class StudentSocketImpl extends BaseSocketImpl {
       long timeStart = System.currentTimeMillis();
       long timeout = 10000;
 
-      while (current_state != ESTABLISHED) {
+      while (! current_state.equals(ESTABLISHED)) {
         long elapsed = System.currentTimeMillis() - timeStart;
         long timeLeft = timeout - elapsed;
         if (timeLeft <= 0) {
@@ -219,7 +219,7 @@ class StudentSocketImpl extends BaseSocketImpl {
       long timeStart = System.currentTimeMillis();
       long timeout = 10000;
 
-      while (current_state != ESTABLISHED && current_state != SYN_RCVD) {
+      while (!current_state.equals(ESTABLISHED) && !current_state.equals(SYN_RCVD)) {
         long elapsed = System.currentTimeMillis() - timeStart;
         long timeLeft = timeout - elapsed;
         if (timeLeft <= 0) {
