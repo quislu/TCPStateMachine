@@ -447,17 +447,24 @@ class StudentSocketImpl extends BaseSocketImpl {
    * @param ref generic reference to be returned to handleTimer
    */
   private TCPTimerTask createTimerTask(long delay, Object ref){
-    if(tcpTimer == null)
-      tcpTimer = new Timer(false);
-    else {
-      try {
-        tcpTimer.cancel();
-      }
-      catch (IllegalStateException e) {
-        System.out.println("timer already cancelled");
-      }
+    if(tcpTimer != null) {
+      tcpTimer.cancel();
     }
-    return new TCPTimerTask(tcpTimer, delay, this, ref);
+    tcpTimer = new Timer(false);
+
+    TCPTimerTask task = new TCPTimerTask(tcpTimer, delay, this, ref);
+    tcpTimer.schedule(task, delay);
+    
+    /* 
+    try {
+      tcpTimer.cancel();
+    }
+    catch (IllegalStateException e) {
+      System.out.println("timer already cancelled");
+    }
+    */
+
+    return task;
   }
 
 
@@ -473,11 +480,14 @@ class StudentSocketImpl extends BaseSocketImpl {
     }
     else {
       // this must run only once the last timer (30 second timer) has expired
-      tcpTimer.cancel();
-      tcpTimer = null;
+      if (tcpTimer != null) {
+        tcpTimer.cancel();
+        tcpTimer = null;
+      }
+
       try {
-        appIS.close();
-        appOS.close();
+        if (appIS != null) appIS.close();
+        if (appOS != null) appOS.close();
       } catch (IOException e) {
         System.err.println("Error: Issue with closing streams: " + e.getMessage());
         e.printStackTrace();
