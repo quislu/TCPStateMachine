@@ -408,6 +408,8 @@ class StudentSocketImpl extends BaseSocketImpl {
    * information.
    */
   public synchronized void handleTimer(Object ref){
+    String name = (String) ref;
+    System.out.println("Timer reached timeout limit for: " + name);
 
     // this must run only once the last timer (30 second timer) has expired
     tcpTimer.cancel();
