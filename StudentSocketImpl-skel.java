@@ -212,10 +212,8 @@ class StudentSocketImpl extends BaseSocketImpl {
         }
 
         System.err.println("DEBUG: Packet received during state SYN_RCVD but it was not a ACK packet.");
-=======
         this.address = p.sourceAddr;
         changeState(ESTABLISHED);
->>>>>>> Stashed changes
         break;
 
       // Server has established connection and is awaiting data
