@@ -449,11 +449,13 @@ class StudentSocketImpl extends BaseSocketImpl {
   private TCPTimerTask createTimerTask(long delay, Object ref){
     if(tcpTimer == null)
       tcpTimer = new Timer(false);
-    try {
-      tcpTimer.cancel();
-    }
-    catch (IllegalStateException e) {
-      System.out.println("timer already cancelled");
+    else {
+      try {
+        tcpTimer.cancel();
+      }
+      catch (IllegalStateException e) {
+        System.out.println("timer already cancelled");
+      }
     }
     return new TCPTimerTask(tcpTimer, delay, this, ref);
   }
