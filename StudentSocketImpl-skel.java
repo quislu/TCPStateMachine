@@ -326,7 +326,6 @@ class StudentSocketImpl extends BaseSocketImpl {
   private synchronized void sendPacketOnTimer(TCPPacket p) {
     // Not sure what the reference object is for
     // String state = null;
-    tcpTimer.cancel();
     TCPWrapper.send(p, this.address);
     System.out.println("DEBUG: packet sent on timer");
     createTimerTask(TIMEOUT, p);
@@ -450,6 +449,7 @@ class StudentSocketImpl extends BaseSocketImpl {
   private TCPTimerTask createTimerTask(long delay, Object ref){
     if(tcpTimer == null)
       tcpTimer = new Timer(false);
+    tcpTimer.cancel();
     return new TCPTimerTask(tcpTimer, delay, this, ref);
   }
 
