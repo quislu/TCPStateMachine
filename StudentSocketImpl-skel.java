@@ -21,6 +21,7 @@ class StudentSocketImpl extends BaseSocketImpl {
   private static final String FIN_WAIT_2 = "FIN_WAIT_2";
   private static final String CLOSING = "CLOSING";
   private static final String TIME_WAIT = "TIME_WAIT";
+  private static final long TIMEOUT = 10000;
 
   private PipedInputStream appIS;
   private PipedOutputStream appOS;
@@ -66,7 +67,7 @@ class StudentSocketImpl extends BaseSocketImpl {
       TCPPacket synPacket = new TCPPacket(localport, port, seqNum, 0, false, true, false, 1000, new byte[0]);
       System.out.println("DEBUG: TCPPacket created.");
 
-      TCPWrapper.send(synPacket, address);
+      sendPacketOnTimer(synPacket);
       changeState(SYN_SENT);
       System.out.println("DEBUG: packet sent.");
 
@@ -98,7 +99,13 @@ class StudentSocketImpl extends BaseSocketImpl {
           while ((l = appIS.read(buf)) != -1) {
               byte[] dataToSend = Arrays.copyOf(buf, l);
               TCPPacket dataPacket = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, dataToSend);
-              TCPWrapper.send(dataPacket, address);
+              sendPacketOnTimer(dataPacket);
+
+                try {
+                  wait();
+                } catch (InterruptedException e) {
+                  throw new IOException("ERROR: Connection Interrupted", e);
+                }
               // Space for retransmission (if needed)
               seqNum = (seqNum + l) % TCPPacket.MAX_PACKET_SIZE;
           }
@@ -149,10 +156,8 @@ class StudentSocketImpl extends BaseSocketImpl {
         // Create and send SYN+ACK
         TCPPacket synAckPacket = new TCPPacket(localport, port, seqNum, ackNum, true, true, false, 1000, new byte[0]);
         System.out.println("DEBUG: TCPPacket created.");
-
-        TCPWrapper.send(synAckPacket, this.address);
-        System.out.println("DEBUG: packet sent.");
-
+        sendPacketOnTimer(synAckPacket);
+        //TCPWrapper.send(synAckPacket, this.address);
         System.out.println("SYNACK Packet sent to " + this.address + ":" + port);
 
         changeState(SYN_RCVD);
@@ -167,6 +172,7 @@ class StudentSocketImpl extends BaseSocketImpl {
           System.err.println("DEBUG: Packet received during state SYN_SENT but it was not a SYN+ACK packet.");
           break;
         }
+        this.tcpTimer.cancel();
         this.seqNum = p.ackNum;
         packetLength = p.data != null? p.data.length : 20;
         this.ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
@@ -187,18 +193,47 @@ class StudentSocketImpl extends BaseSocketImpl {
       case SYN_RCVD:
 
         // Check if packet is an ACK
-        if (!p.ackFlag) {
-          System.err.println("DEBUG: Packet received during state SYN_RCVD but it was not a ACK packet.");
+        if (p.ackFlag) {
+          // Stop waiting for ACK
+          tcpTimer.cancel();
+          changeState(ESTABLISHED);
           break;
         }
+        else if (p.synFlag) {
+          // ACK was likely lost, resend SYN+ACK
+          // Create and send SYN+ACK
+          TCPPacket synAckPacket2 = new TCPPacket(localport, port, seqNum, ackNum, true, true, false, 1000, new byte[0]);
+          System.out.println("DEBUG: TCPPacket created.");
 
-        changeState(ESTABLISHED);
+          sendPacketOnTimer(synAckPacket2);
+          System.out.println("DEBUG: packet sent.");
+
+          System.out.println("SYNACK Packet sent to " + this.address + ":" + port);
+        }
+
+        System.err.println("DEBUG: Packet received during state SYN_RCVD but it was not a ACK packet.");
         break;
 
       // Server has established connection and is awaiting data
       // Server receives data packets and parses them 
       // Or if packet is a FIN, reply with ACK and begin to close
       case ESTABLISHED:
+        // Check for re-sent SYN+ACK (meaning ACK got lost)
+        if (p.synFlag && p.ackFlag) {
+          // resend ACK
+          this.seqNum = p.ackNum;
+          packetLength = p.data != null? p.data.length : 20;
+          this.ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
+
+          TCPPacket ackPacket2 = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, new byte[0]);
+          System.out.println("DEBUG: TCPPacket created.");
+
+          TCPWrapper.send(ackPacket2, this.address);
+          System.out.println("DEBUG: packet sent.");
+
+          System.out.println("ACK Packet sent to " + this.address + ":" + port);
+          break;
+        }
 
         // Check for FIN
         if (p.finFlag) {
@@ -277,6 +312,18 @@ class StudentSocketImpl extends BaseSocketImpl {
         System.err.println("DEBUG: Packet received during state FIN_WAIT_2 but it was not a FIN packet.");
         break;
     }
+  }
+
+  /**
+   * 
+   */
+  private synchronized void sendPacketOnTimer(TCPPacket p) {
+    // Not sure what the reference object is for
+    // String state = null;
+    tcpTimer.cancel();
+    TCPWrapper.send(p, this.address);
+    System.out.println("DEBUG: packet sent on timer");
+    createTimerTask(TIMEOUT, p);
   }
 
   /**
@@ -408,9 +455,22 @@ class StudentSocketImpl extends BaseSocketImpl {
    * information.
    */
   public synchronized void handleTimer(Object ref){
-
-    // this must run only once the last timer (30 second timer) has expired
-    tcpTimer.cancel();
-    tcpTimer = null;
+    if (ref != null) {
+      // Resend packet
+      sendPacketOnTimer((TCPPacket)ref);
+    }
+    else {
+      // this must run only once the last timer (30 second timer) has expired
+      tcpTimer.cancel();
+      tcpTimer = null;
+      try {
+        appIS.close();
+        appOS.close();
+      } catch (IOException e) {
+        System.err.println("Error: Issue with closing streams: " + e.getMessage());
+        e.printStackTrace();
+      }
+    }
   }
+
 }
