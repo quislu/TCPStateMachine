@@ -226,6 +226,8 @@ class StudentSocketImpl extends BaseSocketImpl {
         // stay on ESTABLISHED state
         break;
 
+      case LAST_ACK:
+        break;
       // Local host has sent a FIN to the remote host and is awaiting a FIN
       // If the local host receives a FIN, send ACK and switch to CLOSING state
       // If the local host receives an ACK, switch to FIN_WAIT_2 state
@@ -356,7 +358,11 @@ class StudentSocketImpl extends BaseSocketImpl {
       appOS.close();
       TCPPacket finPacket = new TCPPacket(localport, port, seqNum, ackNum, true, false, true, 1000, new byte[0]);
       TCPWrapper.send(finPacket, address);
-      changeState(FIN_WAIT_1);
+      if (this.current_state.equals(ESTABLISHED)){
+        changeState(FIN_WAIT_1);
+      } else if (this.current_state.equals(CLOSE_WAIT)) {
+        changeState(LAST_ACK);
+      }
     } catch (IOException e) {
       System.err.println("Error: Issue with closing streams: " + e.getMessage());
       e.printStackTrace();
