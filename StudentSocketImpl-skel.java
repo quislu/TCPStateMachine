@@ -225,14 +225,18 @@ class StudentSocketImpl extends BaseSocketImpl {
         }
         // stay on ESTABLISHED state
         break;
-
+      
+      // Remote host has closed and received an ACK, local host has sent its FIN and awaits an ACK
+      // Local host receives and ACK and switches to TIME_WAIT state
       case LAST_ACK:
         // Check if it is an ACK
         if(p.ackFlag) {
           changeState(TIME_WAIT);
           break;
         }
+        System.err.println("DEBUG: Packet received during state LAST_ACK but it was not a ACK packet.");
         break;
+
       // Local host has sent a FIN to the remote host and is awaiting a FIN
       // If the local host receives a FIN, send ACK and switch to CLOSING state
       // If the local host receives an ACK, switch to FIN_WAIT_2 state
