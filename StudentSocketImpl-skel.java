@@ -1,5 +1,6 @@
 import java.io.*;
 import java.net.*;
+import java.util.Arrays;
 import java.util.Timer;
 
 class StudentSocketImpl extends BaseSocketImpl {
@@ -21,6 +22,8 @@ class StudentSocketImpl extends BaseSocketImpl {
   private static final String CLOSING = "CLOSING";
   private static final String TIME_WAIT = "TIME_WAIT";
 
+  private PipedInputStream appIS;
+  private PipedOutputStream appOS;
   private Demultiplexer D;
   private Timer tcpTimer;
   private String current_state;
@@ -30,6 +33,8 @@ class StudentSocketImpl extends BaseSocketImpl {
   StudentSocketImpl(Demultiplexer D) {  // default constructor
     this.D = D;
     this.current_state = CLOSED;    
+    this.appIS = new PipedInputStream();
+    this.appOS = new PipedOutputStream();
     System.out.println("DEBUG: Student Socket initialized.");
   }
 
@@ -77,6 +82,22 @@ class StudentSocketImpl extends BaseSocketImpl {
       }
     }
     System.out.println("DEBUG: Connection established");
+
+    new Thread(() -> {
+      byte[] buf = new byte[512];
+      int l;
+      try {
+          while ((l = appOS.read(buf)) != -1) {
+            byte[] dataToSend = Arrays.copyOf(buf, l);
+            TCPPacket dataPacket = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, dataToSend);
+            TCPWrapper.send(dataPacket, address);
+            // Space for retransmission (if needed)
+            seqNum = (seqNum + l) % TCPPacket.MAX_PACKET_SIZE;
+          }
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }).start();
   }
   
   /**
@@ -86,7 +107,7 @@ class StudentSocketImpl extends BaseSocketImpl {
   public synchronized void receivePacket(TCPPacket p){
     System.out.println("Packet received: " + p);
     this.notifyAll();
-    int packetLength;
+    int packetLength = 1;
     switch(current_state) {
       case LISTEN:
         this.address = p.sourceAddr;
@@ -117,7 +138,7 @@ class StudentSocketImpl extends BaseSocketImpl {
         packetLength = p.data != null? p.data.length : 1;
         this.ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
 
-        TCPPacket ackPacket = new TCPPacket(localport, port, seqNum, ackNum, true, true, false, 1000, new byte[0]);
+        TCPPacket ackPacket = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, new byte[0]);
         System.out.println("DEBUG: TCPPacket created.");
 
         TCPWrapper.send(ackPacket, this.address);
@@ -131,13 +152,35 @@ class StudentSocketImpl extends BaseSocketImpl {
       case SYN_RCVD:
         changeState(ESTABLISHED);
         break;
+
+      case ESTABLISHED:
+        if (p.data != null && p.data.length > 0) {
+          try {
+              // Push to Application
+              appIS.connect(new PipedOutputStream() {{
+                write(p.data);
+                flush();
+              }});
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
+        
+          // Send ACK
+          packetLength = p.data.length;
+          ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
+          TCPPacket ack = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, new byte[0]);
+          TCPWrapper.send(ack, address);
+        }
+
+        break;
     }
   }
 
-  private void changeState( String newState) {
+  private void changeState(String newState) {
     String previousState = this.current_state;
     this.current_state = newState;
     System.out.println("!!! " + previousState + "->" + newState);
+    notifyAll();
   }
   
   /** 
@@ -183,7 +226,7 @@ class StudentSocketImpl extends BaseSocketImpl {
    */
   public InputStream getInputStream() throws IOException {
     // project 4 return appIS;
-    return null;
+    return appIS;
     
   }
 
@@ -199,7 +242,7 @@ class StudentSocketImpl extends BaseSocketImpl {
    */
   public OutputStream getOutputStream() throws IOException {
     // project 4 return appOS;
-    return null;
+    return appOS;
   }
 
 
