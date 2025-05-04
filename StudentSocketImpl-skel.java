@@ -287,6 +287,16 @@ class StudentSocketImpl extends BaseSocketImpl {
     System.out.println("!!! " + previousState + "->" + newState);
     notifyAll();
   }
+
+  private boolean checkOrder(int newSeq, int newAck) {
+    // We assume that seqNum is updated? Add prevPackageSize
+    if (this.ackNum == newSeq && this.seqNum == newAck){
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
   
   /** 
    * Waits for an incoming connection to arrive to connect this socket to
