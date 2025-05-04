@@ -31,11 +31,15 @@ class StudentSocketImpl extends BaseSocketImpl {
   private int ackNum;
 
   StudentSocketImpl(Demultiplexer D) {  // default constructor
-    this.D = D;
-    this.current_state = CLOSED;    
-    this.appIS = new PipedInputStream();
-    this.appOS = new PipedOutputStream();
-    System.out.println("DEBUG: Student Socket initialized.");
+    try {
+      this.D = D;
+      this.current_state = CLOSED;    
+      this.appOS = new PipedOutputStream();
+      this.appIS = new PipedInputStream(appOS);
+      System.out.println("DEBUG: Student Socket initialized.");
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   /**
@@ -46,65 +50,69 @@ class StudentSocketImpl extends BaseSocketImpl {
    * @exception  IOException  if an I/O error occurs when attempting a
    *               connection.
    */
-  public synchronized void connect(InetAddress address, int port) throws IOException{
-    localport = D.getNextAvailablePort();
-    this.address = address;
-    this.port = port;
-    int seqNum = 10; // change to randomize from 0-1000
-    System.out.println("DEBUG: Variables initialized.");
+  public synchronized void connect(InetAddress address, int port) {
+    try {
+      localport = D.getNextAvailablePort();
+      this.address = address;
+      this.port = port;
+      seqNum = 10; // change to randomize from 0-1000
+      System.out.println("DEBUG: Variables initialized.");
 
-    D.registerConnection(address, localport, port, this);
-    System.out.println("DEBUG: Connection registered with " + address + " at " + port + " to local port " + localport);
+      D.registerConnection(address, localport, port, this);
+      System.out.println("DEBUG: Connection registered with " + address + " at " + port + " to local port " + localport);
 
-    TCPPacket synPacket = new TCPPacket(localport, port, seqNum, 0, false, true, false, 1000, new byte[0]);
-    System.out.println("DEBUG: TCPPacket created.");
+      TCPPacket synPacket = new TCPPacket(localport, port, seqNum, 0, false, true, false, 1000, new byte[0]);
+      System.out.println("DEBUG: TCPPacket created.");
 
-    TCPWrapper.send(synPacket, address);
-    changeState(SYN_SENT);
-    System.out.println("DEBUG: packet sent.");
+      TCPWrapper.send(synPacket, address);
+      changeState(SYN_SENT);
+      System.out.println("DEBUG: packet sent.");
 
-    System.out.println("SYN Packet sent to " + address + ":" + port);
+      System.out.println("SYN Packet sent to " + address + ":" + port);
 
-    // Wait? until something
-    long timeStart = System.currentTimeMillis();
-    long timeout = 10000;
+      // Wait? until something
+      long timeStart = System.currentTimeMillis();
+      long timeout = 10000;
 
-    while (current_state != ESTABLISHED) {
-      long elapsed = System.currentTimeMillis() - timeStart;
-      long timeLeft = timeout - elapsed;
-      if (timeLeft <= 0) {
-        throw new IOException("TCP Timeout from connectiong waiting to be established.");
+      while (current_state != ESTABLISHED) {
+        long elapsed = System.currentTimeMillis() - timeStart;
+        long timeLeft = timeout - elapsed;
+        if (timeLeft <= 0) {
+          throw new IOException("TCP Timeout from connectiong waiting to be established.");
+        }
+        try {
+          wait();
+        } catch (InterruptedException e) {
+          throw new IOException("ERROR: Connection Interrupted", e);
+        }
       }
-      try {
-        wait();
-      } catch (InterruptedException e) {
-        throw new IOException("ERROR: Connection Interrupted", e);
-      }
-    }
-    System.out.println("DEBUG: Connection established");
+      System.out.println("DEBUG: Connection established");
 
-    new Thread(() -> {
-      byte[] buf = new byte[512];
-      int l;
-      try {
-          while ((l = appOS.read(buf)) != -1) {
-            byte[] dataToSend = Arrays.copyOf(buf, l);
-            TCPPacket dataPacket = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, dataToSend);
-            TCPWrapper.send(dataPacket, address);
-            // Space for retransmission (if needed)
-            seqNum = (seqNum + l) % TCPPacket.MAX_PACKET_SIZE;
+      new Thread(() -> {
+        byte[] buf = new byte[512];
+        int l;
+        try {
+          while ((l = appIS.read(buf)) != -1) {
+              byte[] dataToSend = Arrays.copyOf(buf, l);
+              TCPPacket dataPacket = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, dataToSend);
+              TCPWrapper.send(dataPacket, address);
+              // Space for retransmission (if needed)
+              seqNum = (seqNum + l) % TCPPacket.MAX_PACKET_SIZE;
           }
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    }).start();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }).start();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
   
   /**
    * Called by Demultiplexer when a packet comes in for this connection
    * @param p The packet that arrived
    */
-  public synchronized void receivePacket(TCPPacket p){
+  public synchronized void receivePacket(TCPPacket p) {
     System.out.println("Packet received: " + p);
     this.notifyAll();
     int packetLength = 1;
@@ -190,27 +198,31 @@ class StudentSocketImpl extends BaseSocketImpl {
    * that will be returned, not the listening ServerSocket.
    * Note that localport is already set prior to this being called.
    */
-  public synchronized void acceptConnection() throws IOException {
-    this.D.registerListeningSocket(localport, this);
-    changeState(LISTEN);
-    System.out.println("DEBUG: current_state changed to " + LISTEN + " with localport " + localport);
+  public synchronized void acceptConnection() {
+    try {
+      this.D.registerListeningSocket(localport, this);
+      changeState(LISTEN);
+      System.out.println("DEBUG: current_state changed to " + LISTEN + " with localport " + localport);
 
-    long timeStart = System.currentTimeMillis();
-    long timeout = 10000;
+      long timeStart = System.currentTimeMillis();
+      long timeout = 10000;
 
-    while (current_state != ESTABLISHED && current_state != SYN_RCVD) {
-      long elapsed = System.currentTimeMillis() - timeStart;
-      long timeLeft = timeout - elapsed;
-      if (timeLeft <= 0) {
-        throw new IOException("TCP Timeout from connectiong waiting to be established.");
+      while (current_state != ESTABLISHED && current_state != SYN_RCVD) {
+        long elapsed = System.currentTimeMillis() - timeStart;
+        long timeLeft = timeout - elapsed;
+        if (timeLeft <= 0) {
+          throw new IOException("TCP Timeout from connectiong waiting to be established.");
+        }
+        try {
+          wait();
+        } catch (InterruptedException e) {
+          throw new IOException("ERROR: Connection Interrupted", e);
+        }
       }
-      try {
-        wait();
-      } catch (InterruptedException e) {
-        throw new IOException("ERROR: Connection Interrupted", e);
-      }
+      System.out.println("DEBUG: Connection established");
+    } catch (IOException e) {
+      e.printStackTrace();
     }
-    System.out.println("DEBUG: Connection established");
   }
 
   
@@ -224,7 +236,7 @@ class StudentSocketImpl extends BaseSocketImpl {
    * @exception  IOException  if an I/O error occurs when creating the
    *               input stream.
    */
-  public InputStream getInputStream() throws IOException {
+  public InputStream getInputStream() {
     // project 4 return appIS;
     return appIS;
     
@@ -240,7 +252,7 @@ class StudentSocketImpl extends BaseSocketImpl {
    * @exception  IOException  if an I/O error occurs when creating the
    *               output stream.
    */
-  public OutputStream getOutputStream() throws IOException {
+  public OutputStream getOutputStream() {
     // project 4 return appOS;
     return appOS;
   }
@@ -251,7 +263,15 @@ class StudentSocketImpl extends BaseSocketImpl {
    *
    * @exception  IOException  if an I/O error occurs when closing this socket.
    */
-  public synchronized void close() throws IOException {
+  public synchronized void close() {
+    try {
+      // TODO: close resources that need closing
+      appIS.close();
+      appOS.close();
+    } catch (IOException e) {
+      System.err.println("Error: Issue with closing streams: " + e.getMessage());
+      e.printStackTrace();
+    }
   }
 
   /** 
