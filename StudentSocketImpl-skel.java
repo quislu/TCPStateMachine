@@ -185,7 +185,7 @@ class StudentSocketImpl extends BaseSocketImpl {
         }
         break;
       
-      case
+      case FIN_WAIT_2:
         if (p.fin) {
           ackNum = (p.seqNum + 1) % TCPPacket.MAX_PACKET_SIZE;
           TCPPacket ack = new TCPPacket(localport, port, seqNum,ackNum, true, false, false, 1000, new byte[0]);
