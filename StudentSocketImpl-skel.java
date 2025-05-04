@@ -52,6 +52,7 @@ class StudentSocketImpl extends BaseSocketImpl {
    */
   public synchronized void connect(InetAddress address, int port) {
     try {
+      // Set up the connection
       localport = D.getNextAvailablePort();
       this.address = address;
       this.port = port;
@@ -61,6 +62,7 @@ class StudentSocketImpl extends BaseSocketImpl {
       D.registerConnection(address, localport, port, this);
       System.out.println("DEBUG: Connection registered with " + address + " at " + port + " to local port " + localport);
 
+      // Create and send a SYN packet to the target host
       TCPPacket synPacket = new TCPPacket(localport, port, seqNum, 0, false, true, false, 1000, new byte[0]);
       System.out.println("DEBUG: TCPPacket created.");
 
@@ -70,7 +72,7 @@ class StudentSocketImpl extends BaseSocketImpl {
 
       System.out.println("SYN Packet sent to " + address + ":" + port);
 
-      // Wait? until something
+      // Wait until SYN+ACK received
       long timeStart = System.currentTimeMillis();
       long timeout = 10000;
 
@@ -87,7 +89,8 @@ class StudentSocketImpl extends BaseSocketImpl {
         }
       }
       System.out.println("DEBUG: Connection established");
-
+      
+      // Use the connection to send data
       new Thread(() -> {
         byte[] buf = new byte[512];
         int l;
@@ -117,7 +120,18 @@ class StudentSocketImpl extends BaseSocketImpl {
     this.notifyAll();
     int packetLength = 1;
     switch(current_state) {
+
+      // Server is currently awaiting first SYN from client
+      // Upon receiving a SYN, send SYN+ACK and switch to SYN_RCVD state
       case LISTEN:
+
+        // Check if packet is a SYN
+        if (! p.synFlag) {
+          System.err.println("DEBUG: Packet received during state LISTEN but it was not a SYN packet.");
+          break;
+        }
+
+        // Get packet information and flags
         this.address = p.sourceAddr;
 
         this.port = p.sourcePort;
@@ -127,12 +141,15 @@ class StudentSocketImpl extends BaseSocketImpl {
         packetLength = p.data != null? p.data.length : 1;
         this.ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
 
-        if (! p.synFlag) {
-          System.err.println("DEBUG: Packet received during state LISTEN but it was not a SYN packet.");
-          break;
+        // Set up connection and close the listening socket
+        try {
+          this.D.unregisterListeningSocket(localport, this);
+          this.D.registerConnection(address, localport, port, this);
+        } catch (IOException e) {
+          e.printStackTrace();
         }
-        this.D.unregisterListeningSocket(localport, this);
-        this.D.registerConnection(address, localport, port, this);
+
+        // Create and send SYN+ACK
         TCPPacket synAckPacket = new TCPPacket(localport, port, seqNum, ackNum, true, true, false, 1000, new byte[0]);
         System.out.println("DEBUG: TCPPacket created.");
 
@@ -144,9 +161,15 @@ class StudentSocketImpl extends BaseSocketImpl {
         changeState(SYN_RCVD);
         break;
 
-
+      // Client has sent a SYN to the server and awaits a SYN+ACK response
+      // Upon receiving a SYN+ACK, reply with ACK and switch to ESTABLISHED state
       case SYN_SENT:
 
+        // Check if packet is a SYN+ACK
+        if (!(p.synFlag && p.ackFlag)) {
+          System.err.println("DEBUG: Packet received during state SYN_SENT but it was not a SYN+ACK packet.");
+          break;
+        }
         this.seqNum = p.ackNum;
 
         packetLength = p.data != null? p.data.length : 1;
@@ -162,46 +185,95 @@ class StudentSocketImpl extends BaseSocketImpl {
 
         changeState(ESTABLISHED);
         break;
-
+      
+      // Server has sent SYN+ACK and now awaits final ACK
+      // Upon receiving an ACK, switch to ESTABLISHED state
       case SYN_RCVD:
+
+        // Check if packet is an ACK
+        if (!p.ackFlag) {
+          System.err.println("DEBUG: Packet received during state SYN_RCVD but it was not a ACK packet.");
+          break;
+        }
+
         changeState(ESTABLISHED);
         break;
 
+      // Server has established connection and is awaiting data
+      // Server receives data packets and parses them 
+      // Or if packet is a FIN, reply with ACK and begin to close
       case ESTABLISHED:
-        if (p.data != null && p.data.length > 0) {
+
+        // Check for FIN
+        if (p.finFlag) {
+          // TODO - send ACK packet
+          // TODO - close application
+          changeState(CLOSE_WAIT);
+          break;
+        }
+
+        else if (p.data != null && p.data.length > 0) {
           try {
-            // Push to Application
+            // Push data to Application
             appOS.write(p.data);
             appOS.flush();
           } catch (IOException e) {
             e.printStackTrace();
           }
         
-          // Send ACK
+          // Create and send ACK
           packetLength = p.data.length;
           ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
           TCPPacket ack = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, new byte[0]);
           TCPWrapper.send(ack, address);
         }
+        // stay on ESTABLISHED state
         break;
 
+      // Local host has sent a FIN to the remote host and is awaiting a FIN
+      // If the local host receives a FIN, send ACK and switch to CLOSING state
+      // If the local host receives an ACK, switch to FIN_WAIT_2 state
       case FIN_WAIT_1:
-        if(p.ack) {
-          changeState(FIN_WAIT_2);
+        // Check if the packet is a FIN
+        if(p.finFlag) {
+          // This means the remote host has also called close() and now awaits an ACK
+          // TODO - SEND ACK
+          changeState(CLOSING);
+          break;
         }
+
+        // Check if the packet is an ACK
+        else if(p.ackFlag) {
+          // This means the remote host has received the FIN and is currently calling close()
+          changeState(FIN_WAIT_2);
+          break;
+        }
+
+        // Otherwise, ignore packet
+        System.err.println("DEBUG: Packet received during state FIN_WAIT_1 but it was not a FIN or an ACK packet.");
         break;
       
+      // Local host has sent a FIN and received an ACK and now waits for remote host to close and send a FIN
+      // Local host receives a FIN and sends an ACK and switches to TIME_WAIT state
       case FIN_WAIT_2:
-        if (p.fin) {
+        // Check if the packet is a FIN
+        if (p.finFlag) {
           ackNum = (p.seqNum + 1) % TCPPacket.MAX_PACKET_SIZE;
           TCPPacket ack = new TCPPacket(localport, port, seqNum,ackNum, true, false, false, 1000, new byte[0]);
           TCPWrapper.send(ack, address);
           changeState(TIME_WAIT);
         }
+
+        // Otherwise ignore the packet
+        System.err.println("DEBUG: Packet received during state FIN_WAIT_2 but it was not a FIN packet.");
         break;
     }
   }
 
+  /**
+   * Change the current state of the host and notify all threads
+   * @param newState the state to switch to
+   */
   private void changeState(String newState) {
     String previousState = this.current_state;
     this.current_state = newState;
