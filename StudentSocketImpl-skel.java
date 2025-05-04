@@ -58,20 +58,20 @@ class StudentSocketImpl extends BaseSocketImpl {
       this.address = address;
       this.port = port;
       seqNum = 10; // change to randomize from 0-1000
-      System.out.println("DEBUG: Variables initialized.");
+      // System.out.println("DEBUG: Variables initialized.");
 
       D.registerConnection(address, localport, port, this);
-      System.out.println("DEBUG: Connection registered with " + address + " at " + port + " to local port " + localport);
+      // System.out.println("DEBUG: Connection registered with " + address + " at " + port + " to local port " + localport);
 
       // Create and send a SYN packet to the target host
       TCPPacket synPacket = new TCPPacket(localport, port, seqNum, 0, false, true, false, 1000, new byte[0]);
-      System.out.println("DEBUG: TCPPacket created.");
+      // System.out.println("DEBUG: TCPPacket created.");
 
       sendPacketOnTimer(synPacket);
       changeState(SYN_SENT);
-      System.out.println("DEBUG: packet sent.");
+      // System.out.println("DEBUG: packet sent.");
 
-      System.out.println("SYN Packet sent to " + address + ":" + port);
+      // System.out.println("SYN Packet sent to " + address + ":" + port);
 
       // Wait until SYN+ACK received
       long timeStart = System.currentTimeMillis();
@@ -89,7 +89,7 @@ class StudentSocketImpl extends BaseSocketImpl {
           throw new IOException("ERROR: Connection Interrupted", e);
         }
       }
-      System.out.println("DEBUG: Connection established");
+      // System.out.println("DEBUG: Connection established");
       
       // Use the connection to send data
       new Thread(() -> {
@@ -178,10 +178,10 @@ class StudentSocketImpl extends BaseSocketImpl {
         this.ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
 
         TCPPacket ackPacket = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, new byte[0]);
-        System.out.println("DEBUG: TCPPacket created.");
+        // System.out.println("DEBUG: TCPPacket created.");
 
         TCPWrapper.send(ackPacket, this.address);
-        System.out.println("DEBUG: packet sent.");
+        // System.out.println("DEBUG: packet sent.");
 
         System.out.println("ACK Packet sent to " + this.address + ":" + port);
 
@@ -358,7 +358,7 @@ class StudentSocketImpl extends BaseSocketImpl {
     try {
       this.D.registerListeningSocket(localport, this);
       changeState(LISTEN);
-      System.out.println("DEBUG: current_state changed to " + LISTEN + " with localport " + localport);
+      // System.out.println("DEBUG: current_state changed to " + LISTEN + " with localport " + localport);
 
       long timeStart = System.currentTimeMillis();
       long timeout = 10000;
@@ -375,7 +375,7 @@ class StudentSocketImpl extends BaseSocketImpl {
           throw new IOException("ERROR: Connection Interrupted", e);
         }
       }
-      System.out.println("DEBUG: Connection established");
+      // System.out.println("DEBUG: Connection established");
     } catch (IOException e) {
       e.printStackTrace();
     }
