@@ -202,8 +202,10 @@ class StudentSocketImpl extends BaseSocketImpl {
 
         // Check for FIN
         if (p.finFlag) {
-          // TODO - send ACK packet
-          // TODO - close application
+          packetLength = p.data != null? p.data.length : 20;
+          ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
+          TCPPacket ack = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, new byte[0]);
+          TCPWrapper.send(ack, address);
           changeState(CLOSE_WAIT);
           break;
         }
@@ -267,7 +269,7 @@ class StudentSocketImpl extends BaseSocketImpl {
         if (p.finFlag) {
           ackNum = (p.seqNum + 20) % TCPPacket.MAX_PACKET_SIZE;
           TCPPacket ack = new TCPPacket(localport, port, seqNum,ackNum, true, false, false, 1000, new byte[0]);
-          TCPWrapper.send(ack, address);
+          TCPWrapper.send(ack, this.address);
           changeState(TIME_WAIT);
         }
 
