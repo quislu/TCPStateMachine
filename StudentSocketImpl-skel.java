@@ -227,6 +227,11 @@ class StudentSocketImpl extends BaseSocketImpl {
         break;
 
       case LAST_ACK:
+        // Check if it is an ACK
+        if(p.ackFlag) {
+          changeState(TIME_WAIT);
+          break;
+        }
         break;
       // Local host has sent a FIN to the remote host and is awaiting a FIN
       // If the local host receives a FIN, send ACK and switch to CLOSING state
