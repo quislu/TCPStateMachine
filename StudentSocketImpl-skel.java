@@ -127,6 +127,12 @@ class StudentSocketImpl extends BaseSocketImpl {
         packetLength = p.data != null? p.data.length : 1;
         this.ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
 
+        if (! p.synFlag) {
+          System.err.println("DEBUG: Packet received during state LISTEN but it was not a SYN packet.");
+          break;
+        }
+        this.D.unregisterListeningSocket(localport, this);
+        this.D.registerConnection(address, localport, port, this);
         TCPPacket synAckPacket = new TCPPacket(localport, port, seqNum, ackNum, true, true, false, 1000, new byte[0]);
         System.out.println("DEBUG: TCPPacket created.");
 
