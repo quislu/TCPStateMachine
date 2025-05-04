@@ -164,11 +164,9 @@ class StudentSocketImpl extends BaseSocketImpl {
       case ESTABLISHED:
         if (p.data != null && p.data.length > 0) {
           try {
-              // Push to Application
-              appIS.connect(new PipedOutputStream() {{
-                write(p.data);
-                flush();
-              }});
+            // Push to Application
+            appOS.write(p.data);
+            appOS.flush();
           } catch (IOException e) {
             e.printStackTrace();
           }
@@ -179,7 +177,21 @@ class StudentSocketImpl extends BaseSocketImpl {
           TCPPacket ack = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, new byte[0]);
           TCPWrapper.send(ack, address);
         }
+        break;
 
+      case FIN_WAIT_1:
+        if(p.ack) {
+          changeState(FIN_WAIT_2);
+        }
+        break;
+      
+      case
+        if (p.fin) {
+          ackNum = (p.seqNum + 1) % TCPPacket.MAX_PACKET_SIZE;
+          TCPPacket ack = new TCPPacket(localport, port, seqNum,ackNum, true, false, false, 1000, new byte[0]);
+          TCPWrapper.send(ack, address);
+          changeState(TIME_WAIT);
+        }
         break;
     }
   }
@@ -268,6 +280,9 @@ class StudentSocketImpl extends BaseSocketImpl {
       // TODO: close resources that need closing
       appIS.close();
       appOS.close();
+      TCPPacket finPacket = new TCPPacket(localport, port, seqNum, ackNum, true, false, true, 1000, new byte[0]);
+      TCPWrapper.send(finPacket, address);
+      changeState(FIN_WAIT_1);
     } catch (IOException e) {
       System.err.println("Error: Issue with closing streams: " + e.getMessage());
       e.printStackTrace();
