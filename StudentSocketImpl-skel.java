@@ -465,19 +465,18 @@ class StudentSocketImpl extends BaseSocketImpl {
       tcpTimer = null; 
     }
 
-    tcpTimer = new Timer(false);
+    tcpTimer = new Timer(true);
 
     TCPTimerTask task = new TCPTimerTask(tcpTimer, delay, this, ref);
-    tcpTimer.schedule(task, delay);
-    
-    /* 
+  
     try {
-      tcpTimer.cancel();
+      tcpTimer.schedule(task, delay);
     }
     catch (IllegalStateException e) {
-      System.out.println("timer already cancelled");
+      System.out.println("Error: Timer already cancelled. Creating New Timer.");
+      tcpTimer = new Timer(true);
+      tcpTimer.schedule(task, delay);
     }
-    */
 
     return task;
   }
