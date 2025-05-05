@@ -149,8 +149,15 @@ class StudentSocketImpl extends BaseSocketImpl {
         this.ackNum = (p.seqNum + packetLength) % TCPPacket.MAX_PACKET_SIZE;
 
         // Set up connection and close the listening socket
+//        try {
+//          this.D.unregisterListeningSocket(localport, this);
+//        } catch (IOException e) {
+//          e.printStackTrace();
+//        }
+        // Go ahead and register connection with Demultiplexer
         try {
           this.D.unregisterListeningSocket(localport, this);
+          this.D.registerConnection(p.sourceAddr, localport, p.sourcePort, this);
         } catch (IOException e) {
           e.printStackTrace();
         }
@@ -202,12 +209,13 @@ class StudentSocketImpl extends BaseSocketImpl {
           tcpTimer.cancel();
           changeState(ESTABLISHED);
 
-          // Go ahead and register connection with Demultiplexer
-          try {
-              this.D.registerConnection(p.sourceAddr, localport, p.sourcePort, this);
-          } catch (IOException e) {
-            e.printStackTrace();
-          }
+//          // Go ahead and register connection with Demultiplexer
+//          try {
+//            this.D.unregisterListeningSocket(localport, this);
+//            this.D.registerConnection(p.sourceAddr, localport, p.sourcePort, this);
+//          } catch (IOException e) {
+//            e.printStackTrace();
+//          }
 
           break;
         }
