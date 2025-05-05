@@ -347,6 +347,7 @@ class StudentSocketImpl extends BaseSocketImpl {
           changeState(CLOSED);
         }
         break;
+
     }
   }
 
@@ -456,6 +457,7 @@ class StudentSocketImpl extends BaseSocketImpl {
    * @exception  IOException  if an I/O error occurs when closing this socket.
    */
   public synchronized void close() {
+  public synchronized void close() throws IOException {
     if (this.current_state.equals(ESTABLISHED) || this.current_state.equals(CLOSE_WAIT)){
       TCPPacket finPacket = new TCPPacket(localport, port, seqNum, ackNum, false, false, true, 1000, new byte[0]);
       TCPWrapper.send(finPacket, this.address);
@@ -467,6 +469,7 @@ class StudentSocketImpl extends BaseSocketImpl {
     } else if (this.current_state.equals(CLOSE_WAIT)) {
       changeState(LAST_ACK);
     }
+    long timeStart = System.currentTimeMillis();
   }
 
   /** 
