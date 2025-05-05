@@ -348,6 +348,10 @@ class StudentSocketImpl extends BaseSocketImpl {
         }
         break;
 
+      case CLOSING:
+        if (p.ackFlag) {
+          changeState(TIME_WAIT);
+        }
     }
   }
 
@@ -456,7 +460,6 @@ class StudentSocketImpl extends BaseSocketImpl {
    *
    * @exception  IOException  if an I/O error occurs when closing this socket.
    */
-  public synchronized void close() {
   public synchronized void close() throws IOException {
     if (this.current_state.equals(ESTABLISHED) || this.current_state.equals(CLOSE_WAIT)){
       TCPPacket finPacket = new TCPPacket(localport, port, seqNum, ackNum, false, false, true, 1000, new byte[0]);
@@ -470,6 +473,20 @@ class StudentSocketImpl extends BaseSocketImpl {
       changeState(LAST_ACK);
     }
     long timeStart = System.currentTimeMillis();
+    long timeout = 10000;
+
+    while (!current_state.equals(FIN_WAIT_2) && !current_state.equals(TIME_WAIT)) {
+      long elapsed = System.currentTimeMillis() - timeStart;
+      long timeLeft = timeout - elapsed;
+      if (timeLeft <= 0) {
+        throw new IOException("TCP Timeout from connectiong waiting to be established.");
+      }
+      try {
+        wait();
+      } catch (InterruptedException e) {
+        throw new IOException("ERROR: Connection Interrupted", e);
+      }
+    }
   }
 
   /** 
