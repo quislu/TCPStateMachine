@@ -462,7 +462,6 @@ class StudentSocketImpl extends BaseSocketImpl {
     // Check if timer is scheduled/running
     if(tcpTimer != null) {
       tcpTimer.cancel();
-      tcpTimer = null; 
     }
 
     tcpTimer = new Timer(true);
@@ -474,7 +473,10 @@ class StudentSocketImpl extends BaseSocketImpl {
     }
     catch (IllegalStateException e) {
       System.out.println("Error: Timer already cancelled. Creating New Timer.");
+      
+      // Create new timer to prevent reusing cancelled ones
       tcpTimer = new Timer(true);
+      task = new TCPTimerTask(tcpTimer, delay, this, ref);
       tcpTimer.schedule(task, delay);
     }
 
