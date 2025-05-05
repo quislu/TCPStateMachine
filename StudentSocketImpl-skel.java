@@ -459,28 +459,16 @@ class StudentSocketImpl extends BaseSocketImpl {
    * @param ref generic reference to be returned to handleTimer
    */
   private TCPTimerTask createTimerTask(long delay, Object ref){
-    // Check if timer is scheduled/running
+    // Cancel existing timer
     if(tcpTimer != null) {
       tcpTimer.cancel();
     }
+    
+    // Create new timer
+    tcpTimer = new Timer();
 
-    tcpTimer = new Timer(true);
-
-    TCPTimerTask task = new TCPTimerTask(tcpTimer, delay, this, ref);
-  
-    try {
-      tcpTimer.schedule(task, delay);
-    }
-    catch (IllegalStateException e) {
-      System.out.println("Error: Timer already cancelled. Creating New Timer.");
-      
-      // Create new timer to prevent reusing cancelled ones
-      tcpTimer = new Timer(true);
-      task = new TCPTimerTask(tcpTimer, delay, this, ref);
-      tcpTimer.schedule(task, delay);
-    }
-
-    return task;
+    // Create and return new TCPTimerTask 
+    return new TCPTimerTask(tcpTimer, delay, this, ref);
   }
 
 
