@@ -38,7 +38,7 @@ class StudentSocketImpl extends BaseSocketImpl {
       this.current_state = CLOSED;    
       this.appOS = new PipedOutputStream();
       this.appIS = new PipedInputStream(appOS);
-      System.out.println("DEBUG: Student Socket initialized.");
+      // System.out.println("DEBUG: Student Socket initialized.");
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -78,13 +78,12 @@ class StudentSocketImpl extends BaseSocketImpl {
 
       // Wait until SYN+ACK received
       long timeStart = System.currentTimeMillis();
-      long timeout = 10000;
 
       while (! current_state.equals(ESTABLISHED)) {
         long elapsed = System.currentTimeMillis() - timeStart;
-        long timeLeft = timeout - elapsed;
+        long timeLeft = TIMEOUT - elapsed;
         if (timeLeft <= 0) {
-          throw new IOException("TCP Timeout from connectiong waiting to be established.");
+          throw new IOException("TCP Timeout from connection waiting to be established.");
         }
         try {
           wait();
