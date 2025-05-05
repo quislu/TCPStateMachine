@@ -317,6 +317,15 @@ class StudentSocketImpl extends BaseSocketImpl {
         // Otherwise ignore the packet
         System.err.println("DEBUG: Packet received during state FIN_WAIT_2 but it was not a FIN packet.");
         break;
+      case TIME_WAIT:
+        if (p.finFlag) {
+          ackNum = (p.seqNum + 1) % TCPPacket.MAX_PACKET_SIZE;
+          TCPPacket ack = new TCPPacket(localport, port, seqNum, ackNum, true, false, false, 1000, new byte[0]);
+          TCPWrapper.send(ack, this.address);
+          System.out.println("ACK packet sent for FIN to " + this.address);
+          changeState(CLOSED);
+        }
+        break;
     }
   }
 
@@ -327,7 +336,8 @@ class StudentSocketImpl extends BaseSocketImpl {
     // Not sure what the reference object is for
     // String state = null;
     TCPWrapper.send(p, this.address);
-    System.out.println("DEBUG: packet sent on timer");
+    System.out.println("DEBUG: Packet sent on timer.");
+    // Create and schedule a timer for retransmission
     createTimerTask(TIMEOUT, p);
   }
 
@@ -428,10 +438,8 @@ class StudentSocketImpl extends BaseSocketImpl {
     // TODO: close resources that need closing
     if (this.current_state.equals(ESTABLISHED) || this.current_state.equals(CLOSE_WAIT)){
       TCPPacket finPacket = new TCPPacket(localport, port, seqNum, ackNum, false, false, true, 1000, new byte[0]);
-
-      InetAddress newAddr = this.address;
-      TCPWrapper.send(finPacket, newAddr);
-
+      TCPWrapper.send(finPacket, this.address);
+      System.out.println("FIN packet sent to " + this.address);
 
     }
     if (this.current_state.equals(ESTABLISHED)){
