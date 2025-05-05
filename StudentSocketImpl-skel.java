@@ -327,7 +327,9 @@ class StudentSocketImpl extends BaseSocketImpl {
         }
 
         // Otherwise ignore the packet
-        System.err.println("DEBUG: Packet received during state FIN_WAIT_2 but it was not a FIN packet.");
+        if (!p.finFlag) {
+          System.err.println("DEBUG: Packet received during state FIN_WAIT_2 but it was not a FIN packet.");
+        }
         break;
     }
   }
@@ -437,14 +439,13 @@ class StudentSocketImpl extends BaseSocketImpl {
    * @exception  IOException  if an I/O error occurs when closing this socket.
    */
   public synchronized void close() {
-    // TODO: close resources that need closing
     if (this.current_state.equals(ESTABLISHED) || this.current_state.equals(CLOSE_WAIT)){
       TCPPacket finPacket = new TCPPacket(localport, port, seqNum, ackNum, false, false, true, 1000, new byte[0]);
 
       InetAddress newAddr = this.address;
+      // Send FIN packet
       TCPWrapper.send(finPacket, newAddr);
-
-
+      createTimerTask(2500, finPacket);
     }
     if (this.current_state.equals(ESTABLISHED)){
       changeState(FIN_WAIT_1);
