@@ -459,9 +459,12 @@ class StudentSocketImpl extends BaseSocketImpl {
    * @param ref generic reference to be returned to handleTimer
    */
   private TCPTimerTask createTimerTask(long delay, Object ref){
+    // Check if timer is scheduled/running
     if(tcpTimer != null) {
       tcpTimer.cancel();
+      tcpTimer = null; 
     }
+
     tcpTimer = new Timer(false);
 
     TCPTimerTask task = new TCPTimerTask(tcpTimer, delay, this, ref);
